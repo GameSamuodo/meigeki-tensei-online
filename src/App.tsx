@@ -13,6 +13,7 @@ import {
 } from './game';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+type SessionPlayer = Player | 'S';
 
 function getCellImageSrc(cell: Cell) {
   if (cell.imageSrc) {
@@ -253,8 +254,8 @@ function Board({
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roomIdInput, setRoomIdInput] = useState('');
-  const [session, setSession] = useState<{ roomId: string; player: Player } | null>(null);
-  const [seats, setSeats] = useState<{ B: boolean; W: boolean } | null>(null);
+  const [session, setSession] = useState<{ roomId: string; player: SessionPlayer } | null>(null);
+  const [seats, setSeats] = useState<{ B: boolean; W: boolean; spectators: number } | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSidePanels, setShowSidePanels] = useState(true);
@@ -281,7 +282,7 @@ export default function App() {
     const data = await requestJson<{
       roomId: string;
       state: GameState;
-      seats: { B: boolean; W: boolean };
+      seats: { B: boolean; W: boolean; spectators: number };
     }>(`/api/rooms/${nextSession.roomId}`);
 
     setGameState(data.state);
@@ -308,9 +309,9 @@ export default function App() {
     try {
       const data = await requestJson<{
         roomId: string;
-        player: Player;
+        player: SessionPlayer;
         state: GameState;
-        seats: { B: boolean; W: boolean };
+        seats: { B: boolean; W: boolean; spectators: number };
       }>('/api/rooms', {
         method: 'POST',
       });
@@ -339,9 +340,9 @@ export default function App() {
     try {
       const data = await requestJson<{
         roomId: string;
-        player: Player;
+        player: SessionPlayer;
         state: GameState;
-        seats: { B: boolean; W: boolean };
+        seats: { B: boolean; W: boolean; spectators: number };
       }>(`/api/rooms/${normalizedRoomId}/join`, {
         method: 'POST',
       });
@@ -357,6 +358,37 @@ export default function App() {
     }
   }
 
+  async function watchRoom() {
+    const normalizedRoomId = roomIdInput.trim().toUpperCase();
+    if (!normalizedRoomId) {
+      setError('Room ID is required.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const data = await requestJson<{
+        roomId: string;
+        player: SessionPlayer;
+        state: GameState;
+        seats: { B: boolean; W: boolean; spectators: number };
+      }>(`/api/rooms/${normalizedRoomId}/watch`, {
+        method: 'POST',
+      });
+
+      setSession({ roomId: data.roomId, player: data.player });
+      setGameState(data.state);
+      setSeats(data.seats);
+      setRoomIdInput(data.roomId);
+    } catch (watchError) {
+      setError(watchError instanceof Error ? watchError.message : 'Failed to watch room.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function submitMove(index: number) {
     if (!session || !gameState) return;
 
@@ -367,7 +399,7 @@ export default function App() {
       const data = await requestJson<{
         roomId: string;
         state: GameState;
-        seats: { B: boolean; W: boolean };
+        seats: { B: boolean; W: boolean; spectators: number };
       }>(`/api/rooms/${session.roomId}/move`, {
         method: 'POST',
         headers: {
@@ -400,6 +432,7 @@ export default function App() {
   const isMyTurn =
     !!state &&
     !!session &&
+    session.player !== 'S' &&
     (state.reposition
       ? state.reposition.player === session.player
       : state.currentPlayer === session.player);
@@ -479,7 +512,7 @@ export default function App() {
         >
           <h1 style={{ margin: 0 }}>Meigeki Tensei Online</h1>
           <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-            Create a room as Black, or join an existing room as White.
+            Create a room as Black, join as White, or watch as Spectator.
           </div>
           <button
             type="button"
@@ -524,6 +557,22 @@ export default function App() {
             }}
           >
             Join Room
+          </button>
+          <button
+            type="button"
+            onClick={() => void watchRoom()}
+            disabled={isLoading}
+            style={{
+              height: 44,
+              border: '1px solid #334155',
+              background: '#f8fafc',
+              color: '#111827',
+              borderRadius: 10,
+              cursor: 'pointer',
+              fontWeight: 700,
+            }}
+          >
+            Spectate
           </button>
           {error ? <div style={{ color: '#b91c1c', fontSize: 14 }}>{error}</div> : null}
         </div>
@@ -650,10 +699,18 @@ export default function App() {
         >
           <h1 style={{ margin: 0 }}>Meigeki Tensei Online</h1>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
-            <div>Room ID: {session.roomId}</div>
-            <div>You are: {session.player === 'B' ? 'Black' : 'White'}</div>
-            <div>Opponent: {seats?.B && seats?.W ? 'Connected' : 'Waiting'}</div>
+          <div>Room ID: {session.roomId}</div>
+          <div>
+            You are:{' '}
+            {session.player === 'B'
+              ? 'Black'
+              : session.player === 'W'
+              ? 'White'
+              : 'Spectator'}
           </div>
+          <div>Opponent: {seats?.B && seats?.W ? 'Connected' : 'Waiting'}</div>
+          <div>Spectators: {seats?.spectators ?? 0}</div>
+        </div>
           {winnerLines.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
               {winnerLines.map((line) => (

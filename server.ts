@@ -7,12 +7,15 @@ import {
   type Player,
 } from './src/game.ts';
 
+type Participant = Player | 'S';
+
 type Room = {
   id: string;
   state: GameState;
   seats: {
     B: boolean;
     W: boolean;
+    spectators: number;
   };
   updatedAt: number;
 };
@@ -20,7 +23,7 @@ type Room = {
 type ApiResponse =
   | {
       roomId: string;
-      player: Player;
+      player: Participant;
       state: GameState;
       seats: Room['seats'];
     }
@@ -117,6 +120,7 @@ const server = createServer(async (req, res) => {
       seats: {
         B: true,
         W: false,
+        spectators: 0,
       },
       updatedAt: Date.now(),
     };
@@ -142,6 +146,22 @@ const server = createServer(async (req, res) => {
       response = json({
         roomId: room.id,
         player: 'W',
+        state: room.state,
+        seats: room.seats,
+      });
+    }
+  } else if (request.method === 'POST' && /^\/api\/rooms\/[^/]+\/watch$/.test(url.pathname)) {
+    const roomId = url.pathname.split('/')[3] ?? '';
+    const room = getRoom(roomId);
+
+    if (!room) {
+      response = json({ error: 'Room not found.' }, 404);
+    } else {
+      room.seats.spectators += 1;
+      room.updatedAt = Date.now();
+      response = json({
+        roomId: room.id,
+        player: 'S',
         state: room.state,
         seats: room.seats,
       });
