@@ -617,7 +617,7 @@ export default function App() {
             fontWeight: 700,
           }}
         >
-          x1.0
+          PC
         </button>
         <button
           type="button"
@@ -633,7 +633,7 @@ export default function App() {
             fontWeight: 700,
           }}
         >
-          x0.6
+          Phone
         </button>
       </div>
       {showSidePanels ? (
