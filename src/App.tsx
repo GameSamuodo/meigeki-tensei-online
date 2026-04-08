@@ -258,7 +258,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSidePanels, setShowSidePanels] = useState(true);
-  const [boardScale, setBoardScale] = useState<1 | 0.7>(1);
+  const [boardScale, setBoardScale] = useState<1 | 0.6>(1);
   const state = gameState;
 
   async function requestJson<T>(input: RequestInfo, init?: RequestInit) {
@@ -621,11 +621,11 @@ export default function App() {
         </button>
         <button
           type="button"
-          onClick={() => setBoardScale(0.7)}
+          onClick={() => setBoardScale(0.6)}
           style={{
             height: 40,
             padding: '0 14px',
-            border: boardScale === 0.7 ? '2px solid #0f172a' : '1px solid #475569',
+            border: boardScale === 0.6 ? '2px solid #0f172a' : '1px solid #475569',
             borderRadius: 10,
             background: '#f8fafc',
             color: '#111827',
@@ -633,7 +633,7 @@ export default function App() {
             fontWeight: 700,
           }}
         >
-          x0.7
+          x0.6
         </button>
       </div>
       {showSidePanels ? (
