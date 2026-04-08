@@ -248,6 +248,7 @@ export default function App() {
   const [seats, setSeats] = useState<{ B: boolean; W: boolean } | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSidePanels, setShowSidePanels] = useState(true);
   const state = gameState;
 
   async function requestJson<T>(input: RequestInfo, init?: RequestInit) {
@@ -562,49 +563,71 @@ export default function App() {
         background: '#d1d5db',
       }}
     >
-      <div
+      <button
+        type="button"
+        onClick={() => setShowSidePanels((current) => !current)}
         style={{
           position: 'absolute',
-          left: 24,
           top: 24,
-          minWidth: 220,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 18,
+          left: 24,
+          zIndex: 1,
+          height: 40,
+          padding: '0 14px',
+          border: '1px solid #475569',
+          borderRadius: 10,
+          background: '#f8fafc',
+          color: '#111827',
+          cursor: 'pointer',
+          fontWeight: 700,
         }}
       >
-        <h1 style={{ margin: 0 }}>Meigeki Tensei Online</h1>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
-          <div>Room ID: {session.roomId}</div>
-          <div>You are: {session.player === 'B' ? 'Black' : 'White'}</div>
-          <div>Opponent: {seats?.B && seats?.W ? 'Connected' : 'Waiting'}</div>
-        </div>
-        {winnerLines.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
-            {winnerLines.map((line) => (
-              <div key={line} style={{ fontSize: 20, fontWeight: 700 }}>
-                {line}
-              </div>
-            ))}
+        {showSidePanels ? 'Hide Info' : 'Show Info'}
+      </button>
+      {showSidePanels ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: 24,
+            top: 76,
+            minWidth: 220,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 18,
+          }}
+        >
+          <h1 style={{ margin: 0 }}>Meigeki Tensei Online</h1>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
+            <div>Room ID: {session.roomId}</div>
+            <div>You are: {session.player === 'B' ? 'Black' : 'White'}</div>
+            <div>Opponent: {seats?.B && seats?.W ? 'Connected' : 'Waiting'}</div>
           </div>
-        ) : (
-          <div style={{ fontSize: 20, fontWeight: 700, marginTop: 10 }}>
-            {turnLabel}
+          {winnerLines.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
+              {winnerLines.map((line) => (
+                <div key={line} style={{ fontSize: 20, fontWeight: 700 }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 10 }}>
+              {turnLabel}
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
+            <div>Black bullets left: {bulletsLeftB}</div>
+            <div>White bullets left: {bulletsLeftW}</div>
           </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
-          <div>Black bullets left: {bulletsLeftB}</div>
-          <div>White bullets left: {bulletsLeftW}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14, marginTop: 4 }}>
+            <div>Black score: {scoreB}</div>
+            <div>White score: {scoreW}</div>
+          </div>
+          <div style={{ fontSize: 14, marginTop: 12 }}>
+            {phaseLabel}
+          </div>
+          {error ? <div style={{ color: '#b91c1c', fontSize: 14 }}>{error}</div> : null}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14, marginTop: 4 }}>
-          <div>Black score: {scoreB}</div>
-          <div>White score: {scoreW}</div>
-        </div>
-        <div style={{ fontSize: 14, marginTop: 12 }}>
-          {phaseLabel}
-        </div>
-        {error ? <div style={{ color: '#b91c1c', fontSize: 14 }}>{error}</div> : null}
-      </div>
+      ) : null}
       <div
         style={{
           display: 'flex',
@@ -628,26 +651,28 @@ export default function App() {
           }}
         />
       </div>
-      <div
-        style={{
-          position: 'absolute',
-          right: 24,
-          top: 24,
-          width: 240,
-          display: 'flex',
-          justifyContent: 'center',
-        }}
-      >
-        <img
-          src="/description.png"
-          alt="Game summary"
+      {showSidePanels ? (
+        <div
           style={{
-            width: '100%',
-            height: 'auto',
-            objectFit: 'contain',
+            position: 'absolute',
+            right: 24,
+            top: 76,
+            width: 240,
+            display: 'flex',
+            justifyContent: 'center',
           }}
-        />
-      </div>
+        >
+          <img
+            src="/description.png"
+            alt="Game summary"
+            style={{
+              width: '100%',
+              height: 'auto',
+              objectFit: 'contain',
+            }}
+          />
+        </div>
+      ) : null}
     </main>
   );
 }
