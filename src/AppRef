@@ -1,0 +1,536 @@
+// import { Client } from 'boardgame.io/client';
+// import { useEffect, useMemo, useRef, useState} from 'react';
+// import { SlideGame, getMovableIndices, isWinningSlide, type GameState } from './game';
+
+// type EmptyIndex = number | undefined;
+
+// type BoardProps = {
+//   cells: GameState['board'];
+//   startEmpty1: EmptyIndex;
+//   startEmpty2: EmptyIndex;
+//   endEmpty1: EmptyIndex;
+//   endEmpty2: EmptyIndex;
+//   currentPlayer: string;
+//   onClick: (i: number) => void;
+//   onDeath?: () => void;
+//   onPilotDeath?: () => void;
+//   lastDeaths?: number[];
+//   reposition?: {
+//     player: 'player1' | 'player2';
+//     from: number;
+//   };
+//   slow?: boolean;
+// };
+
+// function Board({ cells, startEmpty1, startEmpty2, endEmpty1, endEmpty2, currentPlayer, onClick, onDeath, onPilotDeath, lastDeaths, reposition }: BoardProps){
+//   const FULL_SIZE = 9;
+//   const centerStyle = {
+//     position: 'absolute' as const,
+//     top: '50%',
+//     left: '50%',
+//     transform: 'translate(-50%, -50%)',
+//   };
+//   const [deathAnim, setDeathAnim] = useState<Record<number, number>>({});
+//   const [pilotAnim, setPilotAnim] = useState<Record<number, number>>({});
+
+//   function getBaseImage(cell: any) {
+//     if (cell.piece === 'terminal') return '/terminal.png';
+
+//     if (cell.piece === 'target') {
+//       if (cell.owner === 'player1') return '/target1.png';
+//       if (cell.owner === 'player2') return '/target2.png';
+//       return '/target.png';
+//     }
+
+//     return null;
+//   }
+  
+//   const prevDeathsRef = useRef<number[] | undefined>(undefined);
+
+//   useEffect(() => {
+//     if (!lastDeaths?.length) return;
+
+//     // ★ 同じ内容なら無視
+//     if (
+//       prevDeathsRef.current &&
+//       prevDeathsRef.current.length === lastDeaths.length &&
+//       prevDeathsRef.current.every((v, i) => v === lastDeaths[i])
+//     ) {
+//       return;
+//     }
+
+//     prevDeathsRef.current = lastDeaths;
+
+//     const newAnim: Record<number, number> = {};
+//     const newPilotAnim: Record<number, number> = {};
+
+//     lastDeaths.forEach(i => {
+//       if (cells[i]?.hasPilot) {
+//         newPilotAnim[i] = 0;
+//       } else {
+//         newAnim[i] = 0;
+//       }
+//     });
+
+//     setDeathAnim(prev => ({ ...prev, ...newAnim }));
+//     setPilotAnim(prev => ({ ...prev, ...newPilotAnim }));
+
+//     if (lastDeaths.some(i => cells[i]?.hasPilot)) {
+//       onPilotDeath?.();
+//     } else {
+//       onDeath?.();
+//     }
+
+//   }, [lastDeaths, cells]);
+
+//   useEffect(() => {
+//   if (Object.keys(deathAnim).length === 0) return;
+
+//   const timer = setInterval(() => {
+//       setDeathAnim(prev => {
+//         const next: Record<number, number> = {};
+
+//         for (const key in prev) {
+//           const frame = prev[key] + 1;
+
+//           if (frame < 6) {
+//             next[key] = frame;
+//           }
+//         }
+
+//         return next;
+//       });
+//     }, 80);
+
+//     return () => clearInterval(timer);
+//   }, [deathAnim]);
+
+//   useEffect(() => {
+//     if (Object.keys(pilotAnim).length === 0) return;
+
+//     const timer = setInterval(() => {
+//       setPilotAnim(prev => {
+//         const next: Record<number, number> = {};
+
+//         for (const key in prev) {
+//           const frame = prev[key] + 1;
+//           if (frame < 6) next[key] = frame;
+//         }
+
+//         return next;
+//       });
+//     }, 80);
+
+//   return () => clearInterval(timer);
+// }, [pilotAnim]);
+
+//   function renderCell(cell: any, i: number) {
+//     const baseImg = getBaseImage(cell);
+//     const isClickable = reposition
+//       ? repositionTargets.includes(i)
+//       : movable.includes(i);
+//     const animFrame = deathAnim[i];
+//     const pilotFrame = pilotAnim[i];
+//     const isSource = reposition?.from === i;
+
+//     return (
+//       <div
+//         key={i}
+//         onClick={() => {
+//           if (isClickable) onClick(i);
+//         }}
+//         style={{
+//           width: 60,
+//           height: 60,
+//           background: reposition
+//           ? isClickable
+//             ? '#b3ffcc'
+//             : '#eee'
+//           : isClickable
+//           ? '#ffeeba'
+//           : '#eee',
+//           border: isSource ? '3px solid red' : '1px solid transparent',
+//           cursor: isClickable ? 'pointer' : 'not-allowed',
+//           position: 'relative',
+//         }}
+//       >
+//         {baseImg && (
+//           <img
+//             src={baseImg}
+//             style={{ ...centerStyle, width: 40, height: 40 }}
+//           />
+//         )}
+
+//         {cell.hasPilot && (
+//           <img
+//             src={cell.owner === 'player1' ? '/pilot1.png' : '/pilot2.png'}
+//             style={{ ...centerStyle, width: 30, height: 30 }}
+//           />
+//         )}
+
+//         {!cell.isDead && (
+//           <img
+//             src="/live.png"
+//             style={{
+//               ...centerStyle,
+//               width: 50,
+//               height: 50,
+//               opacity: 0.5,
+//             }}
+//           />
+//         )}
+
+//         {animFrame !== undefined && (
+//           <img
+//             src={
+//               animFrame === 0
+//                 ? '/death_anim1.png'
+//                 : animFrame === 1
+//                 ? '/death_anim2.png'
+//                 : animFrame === 2
+//                 ? '/death_anim3.png'
+//                 : animFrame === 3
+//                 ? '/death_anim4.png'
+//                 : animFrame === 4
+//                 ? '/death_anim5.png'
+//                 : '/death_anim6.png'
+//             }
+//             style={{
+//               ...centerStyle,
+//               width: 50,
+//               height: 150,
+//               pointerEvents: 'none',
+//               zIndex: 10,
+//             }}
+//           />
+//         )}
+
+//         {pilotFrame !== undefined && (
+//           <img
+//             src={
+//               pilotFrame === 0
+//                 ? '/pilot_anim1.png'
+//                 : pilotFrame === 1
+//                 ? '/pilot_anim2.png'
+//                 : pilotFrame === 2
+//                 ? '/pilot_anim3.png'
+//                 : pilotFrame === 3
+//                 ? '/pilot_anim4.png'
+//                 : pilotFrame === 4
+//                 ? '/pilot_anim5.png'
+//                 : pilotFrame === 5
+//                 ? '/pilot_anim6.png'
+//                 : pilotFrame === 6
+//                 ? '/pilot_anim7.png'
+//                 : pilotFrame === 7
+//                 ? '/pilot_anim8.png'
+//                 : pilotFrame === 8
+//                 ? '/pilot_anim9.png'
+//                 : '/pilot_anim10.png'
+//             }
+//             style={{
+//               ...centerStyle,
+//               width: 160,
+//               height: 160,
+//               pointerEvents: 'none',
+//               zIndex: 20, // ★通常より上
+//             }}
+//           />
+//         )}
+
+//         {cell.isDead && (
+//           <img
+//             src={
+//               cell.hunter === 'player1'
+//                 ? '/dead2.png'
+//                 : cell.hunter === 'player2'
+//                 ? '/dead1.png'
+//                 : cell.owner === 'neutral'
+//                 ? '/dead.png'
+//                 : '/kuu.png'
+//             }
+//             style={{ ...centerStyle, width: 50, height: 50 }}
+//           />
+//         )}
+//       </div>
+//     );
+//   }
+
+// const repositionTargets = useMemo(() => {
+//   if (!reposition) return [];
+
+//   return cells
+//     .map((cell, i) => {
+//       if (!cell) return null;
+//       if (cell.piece !== 'target') return null;
+//       if (cell.owner !== reposition.player) return null;
+//       if (cell.hasPilot) return null;
+
+//       return i;
+//     })
+//     .filter((i): i is number => i !== null);
+// }, [cells, reposition]);
+
+// function renderTriangle(x: number, y: number) {
+//   const min = 2;
+//   const max = 6; // 9マス中の中央5マス（2,3,4,5,6）
+
+//   let show = false;
+//   let rotation = 0;
+
+//   // 上
+//   if (y === 0 && x >= min && x <= max) {
+//     show = true;
+//     rotation = 180;
+//   }
+
+//   // 下
+//   if (y === 8 && x >= min && x <= max) {
+//     show = true;
+//     rotation = 0;
+//   }
+
+//   // 左
+//   if (x === 0 && y >= min && y <= max) {
+//     show = true;
+//     rotation = 90;
+//   }
+
+//   // 右
+//   if (x === 8 && y >= min && y <= max) {
+//     show = true;
+//     rotation = -90;
+//   }
+
+//   // 表示しない場合（空マス）
+//   if (!show) {
+//     return <div key={`empty-${x}-${y}`} style={{ width: 60, height: 60 }} />;
+//   }
+
+//   const isNear1 =
+//     starEmpty1 !== undefined &&
+//     isNearStartEmptyTriangle(x, y, sx1, sy1);
+
+//   const isNear2 =
+//     starEmpty2 !== undefined &&
+//     isNearStartEmptyTriangle(x, y, sx2, sy2);
+
+//   const isNearX1 =
+//     enEmpty1 !== undefined &&
+//     isNearStartEmptyTriangle(x, y, ex1, ey1);
+//   const isNearX2 =
+//     enEmpty2 !== undefined &&
+//     isNearStartEmptyTriangle(x, y, ex2, ey2);
+
+//   const src = isNear1 ? '/triangle2.png' : isNear2 ? '/triangle1.png' : isNearX1 ||isNearX2 ? '/triangleX.png' : '/triangle.png';
+
+//   return (
+//     <div
+//       key={`t-${x}-${y}`}
+//       style={{
+//         width: 60,
+//         height: 60,
+//         display: 'flex',
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//       }}
+//     >
+//       <img
+//         src={src}
+//         style={{
+//           width: 30,
+//           height: 30,
+//           transform: `rotate(${rotation}deg)`,
+//         }}
+//       />
+//     </div>
+//   );
+// }
+
+// function isNearStartEmptyTriangle(
+//   x: number,
+//   y: number,
+//   sx: number,
+//   sy: number
+// ) {
+//   return (
+//     (x === sx && y === sy - 1) || // 上
+//     (x === sx && y === sy + 1) || // 下
+//     (x === sx - 1 && y === sy) || // 左
+//     (x === sx + 1 && y === sy)    // 右
+//   );
+// }
+
+//   const startEmpty =
+//     currentPlayer === '0' ? startEmpty1 : startEmpty2;
+//   const starEmpty1 = startEmpty1
+//   const sx1 = starEmpty1 !== undefined ? (starEmpty1 % 7) + 1 : -1;
+//   const sy1 = starEmpty1 !== undefined ? Math.floor(starEmpty1 / 7) + 1 : -1;
+//   const starEmpty2 = startEmpty2
+//   const sx2 = starEmpty2 !== undefined ? (starEmpty2 % 7) + 1 : -1;
+//   const sy2 = starEmpty2 !== undefined ? Math.floor(starEmpty2 / 7) + 1 : -1;
+//   const enEmpty1 = endEmpty1
+//   const ex1 = enEmpty1 !== undefined ? (enEmpty1 % 7) + 1 : -1;
+//   const ey1 = enEmpty1 !== undefined ? Math.floor(enEmpty1 / 7) + 1 : -1;
+//   const enEmpty2 = endEmpty2
+//   const ex2 = enEmpty2 !== undefined ? (enEmpty2 % 7) + 1 : -1;
+//   const ey2 = enEmpty2 !== undefined ? Math.floor(enEmpty2 / 7) + 1 : -1;
+
+//   const movable = useMemo(() => {
+//     if (reposition) {
+//       return repositionTargets;
+//     }
+
+//     if (startEmpty === undefined) return [];
+
+//     const base = getMovableIndices(cells, startEmpty);
+//     const player =
+//       currentPlayer === '0' ? 'player1' : 'player2';
+
+//     return base.filter(i =>
+//       i !== startEmpty &&
+//       (
+//         (i !== enEmpty1 && i !== enEmpty2) ||
+//         isWinningSlide(cells, i, startEmpty, player)
+//       ),
+//     );
+//   }, [
+//     cells,
+//     reposition,
+//     repositionTargets,
+//     enEmpty1,
+//     enEmpty2,
+//     startEmpty,
+//     currentPlayer,
+//   ]);
+
+//   return (
+//     <div
+//       style={{
+//         display: 'grid',
+//         gridTemplateColumns: `repeat(${FULL_SIZE}, 60px)`,
+//         gap: 8,
+//       }}
+//     >
+//       {Array.from({ length: FULL_SIZE * FULL_SIZE }).map((_, i) => {
+//         const x = i % FULL_SIZE;
+//         const y = Math.floor(i / FULL_SIZE);
+
+//         // 内側（7x7）
+//         if (x >= 1 && x <= 7 && y >= 1 && y <= 7) {
+//           const boardIndex = (y - 1) * 7 + (x - 1);
+//           const cell = cells[boardIndex];
+
+//           return renderCell(cell, boardIndex);
+//         }
+
+//         // 外側（三角）
+//         return renderTriangle(x, y);
+//       })}
+//     </div>
+//   );
+// }
+
+// export default function App() {
+//   const client = useMemo(() => Client({ game: SlideGame }), []);
+//   const [state, setState] = useState(client.getState());
+//   const [isDark, setIsDark] = useState(false);
+//   const [slow, setSlow] = useState(false);
+
+//   useEffect(() => {
+//     client.start();
+//     const unsubscribe = client.subscribe((state) => {
+//       setState(state);
+//     });
+
+//     return () => {
+//       unsubscribe();
+//       client.stop();
+//     };
+//   }, [client]);
+
+//   if (!state) return <div>Loading...</div>;
+
+//   const MAX = 6;
+//   const remaining1 = MAX - state.G.hunterCount.player1;
+//   const remaining2 = MAX - state.G.hunterCount.player2;
+
+//   const handleDeath = () => {
+//     setIsDark(true);
+//     setTimeout(() => setIsDark(false), 300);
+//   };
+
+//   const handlePilotDeath = () => {
+//     setSlow(true);
+//     setIsDark(true);
+//     setTimeout(() => {
+//       setSlow(false);
+//       setIsDark(false);
+//     }, 400);
+//   };
+  
+//   return (
+//     <div
+//       style={{
+//         marginBottom: 16,
+//         transition: 'transform 0.2s ease',
+//       }}
+//     >
+//       <div
+//         style={{
+//           display: 'flex',
+//           alignItems: 'center',
+//           gap: 16,
+//         }}
+//       >
+//         <h1 style={{ margin: 0 }}>Meigeki Tensei</h1>
+//         {state.ctx.gameover && (
+//         <div style={{ fontSize: '2em', fontWeight: 'bold'}}>
+//           Winner: {state.ctx.gameover.winner}
+//         </div>
+//       )}
+//       </div>
+
+//       <div style={{ display: 'flex', gap: 12 }}>
+//           <div>Black Bullets: {remaining2}</div>
+//           <div>White Bullets: {remaining1}</div>
+//         </div>
+
+//       {isDark && (
+//           <div
+//             style={{
+//               position: 'fixed',
+//               top: 0,
+//               left: 0,
+//               width: '100vw',
+//               height: '100vh',
+//               background: 'rgba(0,0,0,1.0)',
+//               zIndex: 9,
+//               pointerEvents: 'none',
+//             }}
+//           />
+//         )}
+
+//       <Board
+//         cells={state.G.board}
+//         startEmpty1={state.G.startEmpty1}
+//         startEmpty2={state.G.startEmpty2}
+//         endEmpty1={state.G.endEmpty1}
+//         endEmpty2={state.G.endEmpty2}
+//         currentPlayer={state.ctx.currentPlayer}
+//         onClick={(i: number) => {
+//           if (state.G.reposition) {
+//             client.moves.repositionPilot(i);
+//           } else {
+//             client.moves.slide(i);
+//           }
+//         }}
+//         lastDeaths={state.G.lastDeaths}
+//         onDeath={handleDeath}
+//         onPilotDeath={handlePilotDeath}
+//         slow={slow}
+//         reposition={state.G.reposition}
+//       />
+//     </div>
+//   );
+// }
