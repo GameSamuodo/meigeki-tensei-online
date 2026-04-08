@@ -50,6 +50,7 @@ function Board({
   jumpEmptyB,
   jumpEmptyW,
   winHighlightIndices,
+  scale,
 }: {
   board: Cell[];
   movable: number[];
@@ -59,8 +60,16 @@ function Board({
   jumpEmptyB: number | null;
   jumpEmptyW: number | null;
   winHighlightIndices: Set<number>;
+  scale: number;
 }) {
   const FULL_SIZE = SIZE + 2;
+  const cellSize = 72 * scale;
+  const triangleWidth = 32 * scale;
+  const triangleHeight = 28 * scale;
+  const gap = 6 * scale;
+  const borderWidth = Math.max(1, Math.round(3 * scale));
+  const thinBorderWidth = Math.max(1, Math.round(scale));
+  const padding = Math.max(1, Math.round(2 * scale));
 
   function isNearJumpEmpty(x: number, y: number, jumpEmpty: number | null) {
     if (jumpEmpty === null || jumpEmpty < 0) return false;
@@ -113,7 +122,7 @@ function Board({
     if (x === FULL_SIZE - 1 && y >= min && y <= max) rotation = -90;
 
     if (rotation === null) {
-      return <div key={`empty-${x}-${y}`} style={{ width: 72, height: 72 }} />;
+      return <div key={`empty-${x}-${y}`} style={{ width: cellSize, height: cellSize }} />;
     }
 
     const isNearB = isNearJumpEmpty(x, y, jumpEmptyB);
@@ -130,19 +139,19 @@ function Board({
       <div
         key={`triangle-${x}-${y}`}
         style={{
-          width: 72,
-          height: 72,
+          width: cellSize,
+          height: cellSize,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <div style={{ position: 'relative', width: 32, height: 28 }}>
+        <div style={{ position: 'relative', width: triangleWidth, height: triangleHeight }}>
           <svg
             viewBox="0 0 32 28"
             style={{
-              width: 32,
-              height: 28,
+              width: triangleWidth,
+              height: triangleHeight,
               transform: `rotate(${rotation}deg)`,
               overflow: 'visible',
             }}
@@ -152,7 +161,7 @@ function Board({
                 points="16,2 2,26 30,26"
                 fill="transparent"
                 stroke={isOppositeB ? '#111111' : '#ffffff'}
-                strokeWidth="3"
+                strokeWidth={borderWidth}
                 strokeLinejoin="round"
               />
             )}
@@ -172,8 +181,8 @@ function Board({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${FULL_SIZE}, 72px)`,
-        gap: 6,
+        gridTemplateColumns: `repeat(${FULL_SIZE}, ${cellSize}px)`,
+        gap,
       }}
     >
       {Array.from({ length: FULL_SIZE * FULL_SIZE }).map((_, gridIndex) => {
@@ -193,12 +202,12 @@ function Board({
               type="button"
               onClick={() => onCellClick(boardIndex)}
               style={{
-                height: 72,
+                height: cellSize,
                 border: isSource
-                  ? '3px solid #d92d20'
+                  ? `${borderWidth}px solid #d92d20`
                   : isWinHighlight
-                  ? '3px dashed #d92d20'
-                  : '1px solid #999',
+                  ? `${borderWidth}px dashed #d92d20`
+                  : `${thinBorderWidth}px solid #999`,
                 background: isMovable
                   ? mode === 'reposition'
                     ? '#b7f5c5'
@@ -210,7 +219,7 @@ function Board({
                 cursor: isMovable ? 'pointer' : 'default',
                 fontSize: 12,
                 lineHeight: 1.3,
-                padding: 2,
+                padding,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -249,6 +258,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSidePanels, setShowSidePanels] = useState(true);
+  const [boardScale, setBoardScale] = useState<1 | 0.7>(1);
   const state = gameState;
 
   async function requestJson<T>(input: RequestInfo, init?: RequestInit) {
@@ -583,6 +593,49 @@ export default function App() {
       >
         {showSidePanels ? 'Hide Info' : 'Show Info'}
       </button>
+      <div
+        style={{
+          position: 'absolute',
+          top: 24,
+          left: 132,
+          display: 'flex',
+          gap: 8,
+          zIndex: 1,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setBoardScale(1)}
+          style={{
+            height: 40,
+            padding: '0 14px',
+            border: boardScale === 1 ? '2px solid #0f172a' : '1px solid #475569',
+            borderRadius: 10,
+            background: '#f8fafc',
+            color: '#111827',
+            cursor: 'pointer',
+            fontWeight: 700,
+          }}
+        >
+          x1.0
+        </button>
+        <button
+          type="button"
+          onClick={() => setBoardScale(0.7)}
+          style={{
+            height: 40,
+            padding: '0 14px',
+            border: boardScale === 0.7 ? '2px solid #0f172a' : '1px solid #475569',
+            borderRadius: 10,
+            background: '#f8fafc',
+            color: '#111827',
+            cursor: 'pointer',
+            fontWeight: 700,
+          }}
+        >
+          x0.7
+        </button>
+      </div>
       {showSidePanels ? (
         <div
           style={{
@@ -645,6 +698,7 @@ export default function App() {
           jumpEmptyB={state.jumpEmpty.B}
           jumpEmptyW={state.jumpEmpty.W}
           winHighlightIndices={winHighlightIndices}
+          scale={boardScale}
           onCellClick={(index) => {
             if (!isMyTurn || isLoading) return;
             void submitMove(index);
