@@ -6,7 +6,9 @@ export type CellType =
   | 'TARGET:B'
   | 'TARGET:W'
   | 'BP'
+  | 'BPP'
   | 'WP'
+  | 'WPP'
   | 'DEADEND'
   | 'TERM'
   | 'DEADTARGET'
@@ -47,6 +49,7 @@ export type GameState = {
   reposition: {
     player: Player;
     from: number;
+    remainingPilots: number;
     endTurnAfterResolution: boolean;
   } | null;
 };
@@ -58,7 +61,9 @@ function isAliveCellType(type?: CellType) {
     type === 'TARGET:B' ||
     type === 'TARGET:W' ||
     type === 'BP' ||
-    type === 'WP'
+    type === 'BPP' ||
+    type === 'WP' ||
+    type === 'WPP'
   );
 }
 
@@ -76,6 +81,14 @@ function getPilotType(player: Player): CellType {
   return player === 'B' ? 'BP' : 'WP';
 }
 
+function getDoublePilotType(player: Player): CellType {
+  return player === 'B' ? 'BPP' : 'WPP';
+}
+
+function isPilotType(type: CellType | undefined, player: Player) {
+  return type === getPilotType(player) || type === getDoublePilotType(player);
+}
+
 function getOwnedTargetType(player: Player): CellType {
   return player === 'B' ? 'TARGET:B' : 'TARGET:W';
 }
@@ -85,7 +98,9 @@ function toDeadType(type?: CellType): CellType | undefined {
   if (type === 'TARGET:B') return 'DEADTARGET:B';
   if (type === 'TARGET:W') return 'DEADTARGET:W';
   if (type === 'BP') return 'DEAD:BP';
+  if (type === 'BPP') return 'DEAD:BP';
   if (type === 'WP') return 'DEAD:WP';
+  if (type === 'WPP') return 'DEAD:WP';
   return type;
 }
 
@@ -94,11 +109,11 @@ function getDeadImageSrc(type: CellType | undefined, player: Player) {
     return player === 'B' ? '/deadtargetb.png' : '/deadtargetw.png';
   }
 
-  if (type === 'TARGET:B' || type === 'BP') {
+  if (type === 'TARGET:B' || type === 'BP' || type === 'BPP') {
     return player === 'B' ? '/deadbb.png' : '/deadbw.png';
   }
 
-  if (type === 'TARGET:W' || type === 'WP') {
+  if (type === 'TARGET:W' || type === 'WP' || type === 'WPP') {
     return player === 'B' ? '/deadwb.png' : '/deadww.png';
   }
 
@@ -254,7 +269,7 @@ export function getTerminalHighlightIndices(board: Cell[], winner: Player) {
           [-1, 0],
           [0, -1],
         ];
-  const pilotType = getPilotType(winner);
+  const pilotTypes = [getPilotType(winner), getDoublePilotType(winner)];
 
   for (const [dx, dy] of directions) {
     const nx = x + dx;
@@ -263,7 +278,7 @@ export function getTerminalHighlightIndices(board: Cell[], winner: Player) {
     if (nx < 0 || ny < 0 || nx >= SIZE || ny >= SIZE) continue;
 
     const index = ny * SIZE + nx;
-    if (board[index]?.type === pilotType) {
+    if (pilotTypes.includes(board[index]?.type as CellType)) {
       highlights.add(index);
     }
   }
@@ -301,11 +316,15 @@ export function getWinner(board: Cell[]): GameState['winner'] {
 
   const blackWins =
     getTypeAt(1, 0) === 'BP' ||
-    getTypeAt(0, 1) === 'BP';
+    getTypeAt(1, 0) === 'BPP' ||
+    getTypeAt(0, 1) === 'BP' ||
+    getTypeAt(0, 1) === 'BPP';
 
   const whiteWins =
     getTypeAt(-1, 0) === 'WP' ||
-    getTypeAt(0, -1) === 'WP';
+    getTypeAt(-1, 0) === 'WPP' ||
+    getTypeAt(0, -1) === 'WP' ||
+    getTypeAt(0, -1) === 'WPP';
 
   if (blackWins && whiteWins) return 'BW';
   if (blackWins) return 'B';
@@ -574,11 +593,12 @@ function resolveAfterMove(
     disconnected,
     state.currentPlayer,
   );
-  const ownPilotType = getPilotType(state.currentPlayer);
-  const ownPilotIndex = disconnected.find((index) => board[index]?.type === ownPilotType);
+  const ownPilotIndex = disconnected.find((index) =>
+    isPilotType(board[index]?.type, state.currentPlayer),
+  );
   const repositionIndices =
     allowReposition && ownPilotIndex !== undefined
-      ? getRepositionIndices(board, state.currentPlayer)
+      ? getRepositionIndices(board, state.currentPlayer, ownPilotIndex)
       : [];
   const nextBulletsUsed = {
     ...state.bulletsUsed,
@@ -645,6 +665,8 @@ function resolveAfterMove(
       reposition: {
         player: state.currentPlayer,
         from: ownPilotIndex,
+        remainingPilots:
+          board[ownPilotIndex]?.type === getDoublePilotType(state.currentPlayer) ? 2 : 1,
         endTurnAfterResolution: shouldEndTurn,
       },
     };
@@ -780,9 +802,8 @@ function resolveAfterMove(
     };
   }
 
-  const opponentPilotType = getPilotType(opponent);
   const opponentPilotIndex = disconnected.find(
-    (index) => board[index]?.type === opponentPilotType,
+    (index) => isPilotType(board[index]?.type, opponent),
   );
 
   if (opponentPilotIndex !== undefined) {
@@ -978,13 +999,18 @@ export function applySlide(state: GameState, from: number): GameState | null {
   );
 }
 
-export function getRepositionIndices(board: Cell[], player: Player) {
+export function getRepositionIndices(board: Cell[], player: Player, excludedIndex?: number) {
   const targetType = getOwnedTargetType(player);
+  const pilotType = getPilotType(player);
   const disconnected = new Set(getDisconnectedIndices(board));
 
   return board
     .map((cell, index) =>
-      cell.type === targetType && !disconnected.has(index) ? index : null,
+      index !== excludedIndex &&
+      !disconnected.has(index) &&
+      (cell.type === targetType || cell.type === pilotType)
+        ? index
+        : null,
     )
     .filter((index): index is number => index !== null);
 }
@@ -992,18 +1018,44 @@ export function getRepositionIndices(board: Cell[], player: Player) {
 export function applyReposition(state: GameState, to: number): GameState | null {
   if (!state.reposition || state.winner) return null;
 
-  const { player, from, endTurnAfterResolution } = state.reposition;
+  const { player, from, remainingPilots, endTurnAfterResolution } = state.reposition;
   const targetType = getOwnedTargetType(player);
   const pilotType = getPilotType(player);
-  const repositionIndices = getRepositionIndices(state.board, player);
+  const doublePilotType = getDoublePilotType(player);
+  const repositionIndices = getRepositionIndices(state.board, player, from);
 
-  if (state.board[to]?.type !== targetType) return null;
-  if (from === to) return null;
   if (!repositionIndices.includes(to)) return null;
 
   const nextBoard = state.board.map((cell) => ({ ...cell }));
   nextBoard[from] = { type: targetType };
-  nextBoard[to] = { type: pilotType };
+  const destinationType = state.board[to]?.type;
+
+  if (destinationType === targetType) {
+    nextBoard[to] = { type: pilotType };
+  } else if (destinationType === pilotType) {
+    nextBoard[to] = { type: doublePilotType };
+  } else {
+    return null;
+  }
+
+  if (remainingPilots > 1) {
+    return {
+      ...state,
+      board: nextBoard,
+      winReason: { B: null, W: null },
+      winHighlightIndices: [],
+      midTerminal: {
+        player: null,
+        highlightIndices: [],
+      },
+      reposition: {
+        player,
+        from,
+        remainingPilots: remainingPilots - 1,
+        endTurnAfterResolution,
+      },
+    };
+  }
 
   return resolveAfterMove(state, nextBoard, false, endTurnAfterResolution, 0);
 }

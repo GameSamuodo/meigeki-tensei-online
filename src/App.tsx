@@ -23,8 +23,12 @@ function getCellImageSrc(cell: Cell) {
   switch (cell.type) {
     case 'BP':
       return '/bp.png';
+    case 'BPP':
+      return '/bpp.png';
     case 'WP':
       return '/wp.png';
+    case 'WPP':
+      return '/wpp.png';
     case 'DEADEND':
       return '/deadend.png';
     case 'TARGET':
@@ -206,12 +210,14 @@ function Board({
                 height: cellSize,
                 border: isSource
                   ? `${borderWidth}px solid #d92d20`
+                  : isMovable && mode === 'reposition'
+                  ? `${borderWidth}px solid #16a34a`
                   : isWinHighlight
                   ? `${borderWidth}px dashed #d92d20`
                   : `${thinBorderWidth}px solid #999`,
                 background: isMovable
                   ? mode === 'reposition'
-                    ? '#b7f5c5'
+                    ? '#f3f3f3'
                     : '#ffe58f'
                   : isWinHighlight
                   ? '#fde7e7'
