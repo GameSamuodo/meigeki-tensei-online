@@ -980,9 +980,12 @@ export function applySlide(state: GameState, from: number): GameState | null {
 
 export function getRepositionIndices(board: Cell[], player: Player) {
   const targetType = getOwnedTargetType(player);
+  const disconnected = new Set(getDisconnectedIndices(board));
 
   return board
-    .map((cell, index) => (cell.type === targetType ? index : null))
+    .map((cell, index) =>
+      cell.type === targetType && !disconnected.has(index) ? index : null,
+    )
     .filter((index): index is number => index !== null);
 }
 
@@ -992,9 +995,11 @@ export function applyReposition(state: GameState, to: number): GameState | null 
   const { player, from, endTurnAfterResolution } = state.reposition;
   const targetType = getOwnedTargetType(player);
   const pilotType = getPilotType(player);
+  const repositionIndices = getRepositionIndices(state.board, player);
 
   if (state.board[to]?.type !== targetType) return null;
   if (from === to) return null;
+  if (!repositionIndices.includes(to)) return null;
 
   const nextBoard = state.board.map((cell) => ({ ...cell }));
   nextBoard[from] = { type: targetType };
