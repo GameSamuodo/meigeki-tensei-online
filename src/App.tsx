@@ -208,6 +208,7 @@ function Board({
     if (index === from) {
       return {
         transform: `translate(${dx * t * amplify}px, ${dy * t * amplify}px)`,
+        position: 'relative' as const,
         zIndex: 10,
       };
     }
@@ -215,6 +216,7 @@ function Board({
     if (index === to) {
       return {
         transform: `translate(${-dx * t * amplify}px, ${-dy * t * amplify}px)`,
+        position: 'relative' as const,
         zIndex: 10,
       };
     }
