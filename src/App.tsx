@@ -348,6 +348,7 @@ export default function App() {
 
     void refreshRoom(session);
     const intervalId = window.setInterval(() => {
+      if (swapAnimation) return;
       void refreshRoom(session).catch((fetchError: unknown) => {
         setError(fetchError instanceof Error ? fetchError.message : 'Failed to sync room.');
       });
