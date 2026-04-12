@@ -209,7 +209,7 @@ function Board({
       return {
         transform: `translate(${dx * t * amplify}px, ${dy * t * amplify}px)`,
         position: 'relative' as const,
-        zIndex: 10,
+        zIndex: 999,
       };
     }
 
@@ -217,7 +217,7 @@ function Board({
       return {
         transform: `translate(${-dx * t * amplify}px, ${-dy * t * amplify}px)`,
         position: 'relative' as const,
-        zIndex: 10,
+        zIndex: 999,
       };
     }
 
