@@ -202,18 +202,19 @@ function Board({
     const dy = (toY - fromY) * cellSize;
     
     const t = animationProgress;
+    const amplify = 1.2; // 強調
 
     // 0→1でそのまま移動（往復しない）
     if (index === from) {
       return {
-        transform: `translate(${dx * t}px, ${dy * t}px)`,
+        transform: `translate(${dx * t * amplify}px, ${dy * t * amplify}px)`,
         zIndex: 10,
       };
     }
 
     if (index === to) {
       return {
-        transform: `translate(${-dx * t}px, ${-dy * t}px)`,
+        transform: `translate(${-dx * t * amplify}px, ${-dy * t * amplify}px)`,
         zIndex: 10,
       };
     }
