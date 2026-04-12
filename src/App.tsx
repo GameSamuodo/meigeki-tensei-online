@@ -339,7 +339,9 @@ export default function App() {
       seats: { B: boolean; W: boolean; spectators: number };
     }>(`/api/rooms/${nextSession.roomId}`);
 
-    setGameState(data.state);
+    if (!swapAnimation) {
+      setGameState(data.state);
+    }
     setSeats(data.seats);
   }
 
