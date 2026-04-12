@@ -314,6 +314,7 @@ export default function App() {
   const [swapAnimation, setSwapAnimation] = useState<{from: number; to: number;} | null>(null);
   const [animationProgress, setAnimationProgress] = useState(0);
   const [pendingMove, setPendingMove] = useState<number | null>(null);
+  const [moveAnimation, setMoveAnimation] = useState<{from: number; to: number;} | null>(null);
   const state = gameState;
 
   async function requestJson<T>(input: RequestInfo, init?: RequestInit) {
@@ -339,7 +340,7 @@ export default function App() {
       seats: { B: boolean; W: boolean; spectators: number };
     }>(`/api/rooms/${nextSession.roomId}`);
 
-    if (!swapAnimation) {
+    if (!swapAnimation && !moveAnimation) {
       setGameState(data.state);
     }
     setSeats(data.seats);
@@ -360,7 +361,8 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    if (!swapAnimation) return;
+    const anim = swapAnimation ?? moveAnimation;
+    if (!anim) return;
 
     let frame = 0;
     const totalFrames = 15;
@@ -373,6 +375,7 @@ export default function App() {
         requestAnimationFrame(tick);
       } else {
         setSwapAnimation(null);
+        setMoveAnimation(null);
         setAnimationProgress(0);
 
         if (pendingMove !== null) {
@@ -383,7 +386,7 @@ export default function App() {
     }
 
     requestAnimationFrame(tick);
-  }, [swapAnimation]);
+  }, [swapAnimation, moveAnimation]);
 
   async function createRoom() {
     setIsLoading(true);
@@ -475,17 +478,20 @@ export default function App() {
   async function submitMove(index: number) {
     if (!session || !gameState) return;
 
-    // スワップ時はアニメーションを先にやる
+    // reposition（既存）
     if (gameState.reposition) {
       const from = gameState.reposition.from;
-      const to = index;
-
-      setSwapAnimation({ from, to });
-      setPendingMove(index); // ← 後で送る
+      setSwapAnimation({ from, to: index });
+      setPendingMove(index);
       return;
     }
 
-    await actuallySendMove(index);
+    // ★ ここ追加（slide）
+    const from = gameState.turnStartEmpty; // ←これ重要
+    const to = index;
+
+    setMoveAnimation({ from, to });
+    setPendingMove(index);
   }
 
   async function actuallySendMove(index: number) {
@@ -851,7 +857,7 @@ export default function App() {
           repositionSource={state.reposition?.from ?? null}
           jumpEmptyB={state.jumpEmpty.B}
           jumpEmptyW={state.jumpEmpty.W}
-          swapAnimation={swapAnimation}
+          swapAnimation={swapAnimation ?? moveAnimation}
           animationProgress={animationProgress}
           winHighlightIndices={winHighlightIndices}
           scale={boardScale}
