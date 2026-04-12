@@ -55,6 +55,8 @@ function Board({
   jumpEmptyB,
   jumpEmptyW,
   winHighlightIndices,
+  swapAnimation,
+  animationProgress,
   scale,
 }: {
   board: Cell[];
@@ -65,6 +67,8 @@ function Board({
   jumpEmptyB: number | null;
   jumpEmptyW: number | null;
   winHighlightIndices: Set<number>;
+  swapAnimation: { from: number; to: number } | null;
+  animationProgress: number;
   scale: number;
 }) {
   const FULL_SIZE = SIZE + 2;
@@ -182,6 +186,45 @@ function Board({
     );
   }
 
+  function getAnimationStyle(index: number) {
+    if (!swapAnimation) return {};
+
+    const { from, to } = swapAnimation;
+
+    if (index !== from && index !== to) return {};
+
+    const fromX = from % SIZE;
+    const fromY = Math.floor(from / SIZE);
+    const toX = to % SIZE;
+    const toY = Math.floor(to / SIZE);
+
+    const dx = (toX - fromX) * cellSize;
+    const dy = (toY - fromY) * cellSize;
+
+    const p = animationProgress;
+
+    // 接近 → 重なる → 離れる
+    const eased = p < 0.5 ? p * 2 : (1 - p) * 2;
+
+    const scale = 1 + 0.2 * (1 - Math.abs(0.5 - p) * 2); // 中央で大きく
+
+    if (index === from) {
+      return {
+        transform: `translate(${dx * eased}px, ${dy * eased}px) scale(${scale})`,
+        zIndex: 10,
+      };
+    }
+
+    if (index === to) {
+      return {
+        transform: `translate(${-dx * eased}px, ${-dy * eased}px) scale(${scale})`,
+        zIndex: 10,
+      };
+    }
+
+    return {};
+  }
+
   return (
     <div
       style={{
@@ -232,6 +275,9 @@ function Board({
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
+
+                transition: 'transform 30ms linear',
+                ...getAnimationStyle(boardIndex),
               }}
             >
               {getCellImageSrc(cell) ? (
@@ -267,6 +313,9 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSidePanels, setShowSidePanels] = useState(true);
   const [boardScale, setBoardScale] = useState<1 | 0.6>(1);
+  const [swapAnimation, setSwapAnimation] = useState<{from: number; to: number;} | null>(null);
+  const [animationProgress, setAnimationProgress] = useState(0);
+  const [pendingMove, setPendingMove] = useState<number | null>(null);
   const state = gameState;
 
   async function requestJson<T>(input: RequestInfo, init?: RequestInit) {
@@ -308,6 +357,32 @@ export default function App() {
 
     return () => window.clearInterval(intervalId);
   }, [session]);
+
+  useEffect(() => {
+    if (!swapAnimation) return;
+
+    let frame = 0;
+    const totalFrames = 5;
+
+    function tick() {
+      frame++;
+      setAnimationProgress(frame / totalFrames);
+
+      if (frame < totalFrames) {
+        requestAnimationFrame(tick);
+      } else {
+        setSwapAnimation(null);
+        setAnimationProgress(0);
+
+        if (pendingMove !== null) {
+          void actuallySendMove(pendingMove);
+          setPendingMove(null);
+        }
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }, [swapAnimation]);
 
   async function createRoom() {
     setIsLoading(true);
@@ -399,6 +474,22 @@ export default function App() {
   async function submitMove(index: number) {
     if (!session || !gameState) return;
 
+    // スワップ時はアニメーションを先にやる
+    if (gameState.reposition) {
+      const from = gameState.reposition.from;
+      const to = index;
+
+      setSwapAnimation({ from, to });
+      setPendingMove(index); // ← 後で送る
+      return;
+    }
+
+    await actuallySendMove(index);
+  }
+
+  async function actuallySendMove(index: number) {
+    if (!session || !gameState) return;
+
     setIsLoading(true);
     setError('');
 
@@ -409,9 +500,7 @@ export default function App() {
         seats: { B: boolean; W: boolean; spectators: number };
       }>(`/api/rooms/${session.roomId}/move`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           player: session.player,
           action: gameState.reposition ? 'reposition' : 'slide',
@@ -421,8 +510,8 @@ export default function App() {
 
       setGameState(data.state);
       setSeats(data.seats);
-    } catch (moveError) {
-      setError(moveError instanceof Error ? moveError.message : 'Failed to submit move.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to submit move.');
     } finally {
       setIsLoading(false);
     }
@@ -761,6 +850,8 @@ export default function App() {
           repositionSource={state.reposition?.from ?? null}
           jumpEmptyB={state.jumpEmpty.B}
           jumpEmptyW={state.jumpEmpty.W}
+          swapAnimation={swapAnimation}
+          animationProgress={animationProgress}
           winHighlightIndices={winHighlightIndices}
           scale={boardScale}
           onCellClick={(index) => {
