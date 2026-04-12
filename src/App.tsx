@@ -205,6 +205,7 @@ function Board({
             <button
               key={boardIndex}
               type="button"
+              disabled={!isMovable}
               onClick={() => onCellClick(boardIndex)}
               style={{
                 height: cellSize,
@@ -764,6 +765,7 @@ export default function App() {
           scale={boardScale}
           onCellClick={(index) => {
             if (!isMyTurn || isLoading) return;
+            if (!movable.includes(index)) return;
             void submitMove(index);
           }}
         />
