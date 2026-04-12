@@ -56,6 +56,7 @@ function Board({
   jumpEmptyW,
   winHighlightIndices,
   swapAnimation,
+  slideAnimations,
   animationProgress,
   scale,
 }: {
@@ -68,6 +69,7 @@ function Board({
   jumpEmptyW: number | null;
   winHighlightIndices: Set<number>;
   swapAnimation: { from: number; to: number } | null;
+  slideAnimations: { from: number; to: number }[] | null;
   animationProgress: number;
   scale: number;
 }) {
@@ -187,37 +189,52 @@ function Board({
   }
 
   function getAnimationStyle(index: number) {
-    if (!swapAnimation) return {};
+    if (swapAnimation) {
+      const { from, to } = swapAnimation;
 
-    const { from, to } = swapAnimation;
+      if (index !== from && index !== to) return {};
 
-    if (index !== from && index !== to) return {};
+      const fromX = from % SIZE;
+      const fromY = Math.floor(from / SIZE);
+      const toX = to % SIZE;
+      const toY = Math.floor(to / SIZE);
 
-    const fromX = from % SIZE;
-    const fromY = Math.floor(from / SIZE);
-    const toX = to % SIZE;
-    const toY = Math.floor(to / SIZE);
+      const dx = (toX - fromX) * cellSize;
+      const dy = (toY - fromY) * cellSize;
 
-    const dx = (toX - fromX) * cellSize;
-    const dy = (toY - fromY) * cellSize;
-    
-    const t = animationProgress;
-    const amplify = 1.2; // 強調
+      if (index === from) {
+        return {
+          transform: `translate(${dx * animationProgress}px, ${dy * animationProgress}px)`,
+          position: 'relative' as const,
+          zIndex: 999,
+        };
+      }
 
-    // 0→1でそのまま移動（往復しない）
-    if (index === from) {
-      return {
-        transform: `translate(${dx * t * amplify}px, ${dy * t * amplify}px)`,
-        position: 'relative' as const,
-        zIndex: 999,
-      };
+      if (index === to) {
+        return {
+          transform: `translate(${-dx * animationProgress}px, ${-dy * animationProgress}px)`,
+          position: 'relative' as const,
+          zIndex: 999,
+        };
+      }
     }
 
-    if (index === to) {
+    if (slideAnimations) {
+      const anim = slideAnimations.find(a => a.from === index);
+      if (!anim) return {};
+
+      const fromX = anim.from % SIZE;
+      const fromY = Math.floor(anim.from / SIZE);
+      const toX = anim.to % SIZE;
+      const toY = Math.floor(anim.to / SIZE);
+
+      const dx = (toX - fromX) * cellSize;
+      const dy = (toY - fromY) * cellSize;
+
       return {
-        transform: `translate(${-dx * t * amplify}px, ${-dy * t * amplify}px)`,
+        transform: `translate(${dx * animationProgress}px, ${dy * animationProgress}px)`,
         position: 'relative' as const,
-        zIndex: 999,
+        zIndex: 10,
       };
     }
 
@@ -314,7 +331,8 @@ export default function App() {
   const [swapAnimation, setSwapAnimation] = useState<{from: number; to: number;} | null>(null);
   const [animationProgress, setAnimationProgress] = useState(0);
   const [pendingMove, setPendingMove] = useState<number | null>(null);
-  const [moveAnimation, setMoveAnimation] = useState<{from: number; to: number;} | null>(null);
+  const [slideAnimations, setSlideAnimations] = useState<{ from: number; to: number }[] | null>(null);
+  const [slideQueue, setSlideQueue] = useState<{from:number;to:number}[]>([]);
   const state = gameState;
 
   async function requestJson<T>(input: RequestInfo, init?: RequestInit) {
@@ -340,10 +358,35 @@ export default function App() {
       seats: { B: boolean; W: boolean; spectators: number };
     }>(`/api/rooms/${nextSession.roomId}`);
 
-    if (!swapAnimation && !moveAnimation) {
+    if (!swapAnimation && !slideAnimations) {
       setGameState(data.state);
     }
     setSeats(data.seats);
+  }
+
+  function buildSlideAnimations(from: number, empty: number) {
+    const result = [];
+    let current = empty;
+
+    while (current !== from) {
+      const cx = current % SIZE;
+      const cy = Math.floor(current / SIZE);
+      const fx = from % SIZE;
+      const fy = Math.floor(from / SIZE);
+
+      let next;
+
+      if (cx === fx) {
+        next = cy < fy ? current + SIZE : current - SIZE;
+      } else {
+        next = cx < fx ? current + 1 : current - 1;
+      }
+
+      result.push({ from: next, to: current });
+      current = next;
+    }
+
+    return result;
   }
 
   useEffect(() => {
@@ -361,7 +404,7 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    const anim = swapAnimation ?? moveAnimation;
+    const anim = swapAnimation ?? slideAnimations;
     if (!anim) return;
 
     let frame = 0;
@@ -374,8 +417,21 @@ export default function App() {
       if (frame < totalFrames) {
         requestAnimationFrame(tick);
       } else {
+        if (slideAnimations) {
+          const nextQueue = [...slideQueue];
+
+          if (nextQueue.length > 0) {
+            const next = nextQueue.shift()!;
+            setSlideQueue(nextQueue);
+            setSlideAnimations([next]);
+            setAnimationProgress(0);
+            return;
+          }
+        }
+
+        // 完全終了
         setSwapAnimation(null);
-        setMoveAnimation(null);
+        setSlideAnimations(null);
         setAnimationProgress(0);
 
         if (pendingMove !== null) {
@@ -386,7 +442,7 @@ export default function App() {
     }
 
     requestAnimationFrame(tick);
-  }, [swapAnimation, moveAnimation]);
+  }, [swapAnimation, slideAnimations, slideQueue, pendingMove]);
 
   async function createRoom() {
     setIsLoading(true);
@@ -478,7 +534,7 @@ export default function App() {
   async function submitMove(index: number) {
     if (!session || !gameState) return;
 
-    // reposition（既存）
+    // reposition
     if (gameState.reposition) {
       const from = gameState.reposition.from;
       setSwapAnimation({ from, to: index });
@@ -486,11 +542,14 @@ export default function App() {
       return;
     }
 
-    // ★ ここ追加（slide）
-    const from = gameState.turnStartEmpty; // ←これ重要
-    const to = index;
+    // slide
+    const empty = gameState.turnStartEmpty;
+    const from = index;
 
-    setMoveAnimation({ from, to });
+    const anims = buildSlideAnimations(from, empty);
+
+    setSlideAnimations([anims[0]]);
+    setSlideQueue(anims.slice(1));
     setPendingMove(index);
   }
 
@@ -857,7 +916,8 @@ export default function App() {
           repositionSource={state.reposition?.from ?? null}
           jumpEmptyB={state.jumpEmpty.B}
           jumpEmptyW={state.jumpEmpty.W}
-          swapAnimation={swapAnimation ?? moveAnimation}
+          swapAnimation={swapAnimation}
+          slideAnimations={slideAnimations}
           animationProgress={animationProgress}
           winHighlightIndices={winHighlightIndices}
           scale={boardScale}
