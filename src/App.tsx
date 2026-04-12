@@ -200,24 +200,20 @@ function Board({
 
     const dx = (toX - fromX) * cellSize;
     const dy = (toY - fromY) * cellSize;
+    
+    const t = animationProgress;
 
-    const p = animationProgress;
-
-    // 接近 → 重なる → 離れる
-    const eased = p < 0.5 ? p * 2 : (1 - p) * 2;
-
-    const scale = 1 + 0.2 * (1 - Math.abs(0.5 - p) * 2); // 中央で大きく
-
+    // 0→1でそのまま移動（往復しない）
     if (index === from) {
       return {
-        transform: `translate(${dx * eased}px, ${dy * eased}px) scale(${scale})`,
+        transform: `translate(${dx * t}px, ${dy * t}px)`,
         zIndex: 10,
       };
     }
 
     if (index === to) {
       return {
-        transform: `translate(${-dx * eased}px, ${-dy * eased}px) scale(${scale})`,
+        transform: `translate(${-dx * t}px, ${-dy * t}px)`,
         zIndex: 10,
       };
     }
@@ -276,7 +272,6 @@ function Board({
                 alignItems: 'center',
                 justifyContent: 'center',
 
-                transition: 'transform 30ms linear',
                 ...getAnimationStyle(boardIndex),
               }}
             >
@@ -362,7 +357,7 @@ export default function App() {
     if (!swapAnimation) return;
 
     let frame = 0;
-    const totalFrames = 5;
+    const totalFrames = 15;
 
     function tick() {
       frame++;
