@@ -618,6 +618,8 @@ export default function App() {
   const bulletsLeftW = state ? 6 - state.bulletsUsed.W : 6;
   const scoreB = state?.score.B ?? 0;
   const scoreW = state?.score.W ?? 0;
+  const effectiveBoard = displayBoard ?? state?.board ?? [];
+  const effectiveEmpty = currentEmpty ?? state?.turnStartEmpty ?? null;
   const blockedIndices = useMemo(
     () => (state ? getTriangleBlockedIndices(state.jumpEmpty) : []),
     [state],
@@ -635,20 +637,22 @@ export default function App() {
       !state || state.winner || !isMyTurn
         ? []
         : state.reposition
-        ? getRepositionIndices(state.board, state.reposition.player)
-        : getMovableIndices(state.board, state.turnRotation).filter(
-            (index) => !blockedIndices.includes(index) || index === state.turnStartEmpty,
+        ? getRepositionIndices(effectiveBoard, state.reposition.player)
+        : getMovableIndices(effectiveBoard, state.turnRotation).filter(
+            (index) => !blockedIndices.includes(index) || index === effectiveEmpty,
           ),
     [
       blockedIndices,
+      effectiveBoard,
+      effectiveEmpty,
       isMyTurn,
       state,
     ],
   );
 
   const previewTerminalWinner = useMemo(
-    () => (state && !state.winner && !state.reposition ? getWinner(state.board) : null),
-    [state],
+    () => (state && !state.winner && !state.reposition ? getWinner(effectiveBoard) : null),
+    [effectiveBoard, state],
   );
 
   const winHighlightIndices = useMemo(() => {
@@ -661,22 +665,22 @@ export default function App() {
     }
 
     if (previewTerminalWinner === 'B') {
-      return new Set(getTerminalHighlightIndices(state.board, 'B'));
+      return new Set(getTerminalHighlightIndices(effectiveBoard, 'B'));
     }
 
     if (previewTerminalWinner === 'W') {
-      return new Set(getTerminalHighlightIndices(state.board, 'W'));
+      return new Set(getTerminalHighlightIndices(effectiveBoard, 'W'));
     }
 
     if (previewTerminalWinner === 'BW') {
       return new Set([
-        ...getTerminalHighlightIndices(state.board, 'B'),
-        ...getTerminalHighlightIndices(state.board, 'W'),
+        ...getTerminalHighlightIndices(effectiveBoard, 'B'),
+        ...getTerminalHighlightIndices(effectiveBoard, 'W'),
       ]);
     }
 
     return new Set<number>();
-  }, [previewTerminalWinner, state]);
+  }, [effectiveBoard, previewTerminalWinner, state]);
 
   if (!session || !state) {
     return (
