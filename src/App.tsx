@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getCellLabel,
   getEmptyIndex,
@@ -350,7 +350,19 @@ export default function App() {
   const [slideQueue, setSlideQueue] = useState<{from:number;to:number}[]>([]);
   const [optimisticJumpEmpty, setOptimisticJumpEmpty] = useState<{ player: Player; index: number } | null>(null);
   const [pendingJumpEmpty, setPendingJumpEmpty] = useState<{ player: Player; index: number } | null>(null);
+  const animationActiveRef = useRef(false);
+  const pendingMoveRef = useRef<number | null>(null);
+  const refreshRequestIdRef = useRef(0);
+  const moveRequestIdRef = useRef(0);
   const state = gameState;
+
+  useEffect(() => {
+    animationActiveRef.current = swapAnimation !== null || slideAnimations !== null;
+  }, [slideAnimations, swapAnimation]);
+
+  useEffect(() => {
+    pendingMoveRef.current = pendingMove;
+  }, [pendingMove]);
 
   function swapBoardCells(board: Cell[], from: number, to: number) {
     const nextBoard = board.map((cell) => ({ ...cell }));
@@ -376,6 +388,7 @@ export default function App() {
 
   async function refreshRoom(nextSession = session) {
     if (!nextSession) return;
+    const requestId = ++refreshRequestIdRef.current;
 
     const data = await requestJson<{
       roomId: string;
@@ -383,7 +396,12 @@ export default function App() {
       seats: { B: boolean; W: boolean; spectators: number };
     }>(`/api/rooms/${nextSession.roomId}`);
 
-    if (!swapAnimation && !slideAnimations && pendingMove === null) {
+    const shouldApplyBoard =
+      requestId === refreshRequestIdRef.current &&
+      !animationActiveRef.current &&
+      pendingMoveRef.current === null;
+
+    if (shouldApplyBoard) {
       setGameState(data.state);
       setDisplayBoard(data.state.board);
       setOptimisticJumpEmpty(null);
@@ -632,6 +650,7 @@ export default function App() {
 
   async function actuallySendMove(index: number) {
     if (!session || !gameState) return;
+    const requestId = ++moveRequestIdRef.current;
 
     setIsLoading(true);
     setError('');
@@ -651,6 +670,11 @@ export default function App() {
         }),
       });
 
+      if (requestId !== moveRequestIdRef.current) {
+        return;
+      }
+
+      refreshRequestIdRef.current++;
       setGameState(data.state);
       setDisplayBoard(data.state.board);
       setOptimisticJumpEmpty(null);
