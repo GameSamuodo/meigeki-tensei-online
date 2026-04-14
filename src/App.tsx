@@ -335,8 +335,8 @@ export default function App() {
   const [pendingMove, setPendingMove] = useState<number | null>(null);
   const [slideAnimations, setSlideAnimations] = useState<{ from: number; to: number }[] | null>(null);
   const [slideQueue, setSlideQueue] = useState<{from:number;to:number}[]>([]);
-  const [currentEmpty, setCurrentEmpty] = useState<number | null>(null);
   const [optimisticJumpEmpty, setOptimisticJumpEmpty] = useState<{ player: Player; index: number } | null>(null);
+  const [pendingJumpEmpty, setPendingJumpEmpty] = useState<{ player: Player; index: number } | null>(null);
   const state = gameState;
 
   function swapBoardCells(board: Cell[], from: number, to: number) {
@@ -374,6 +374,7 @@ export default function App() {
       setGameState(data.state);
       setDisplayBoard(data.state.board);
       setOptimisticJumpEmpty(null);
+      setPendingJumpEmpty(null);
     }
     setSeats(data.seats);
   }
@@ -454,7 +455,6 @@ export default function App() {
             if (!prevBoard || !completedStep) return prevBoard;
             return swapBoardCells(prevBoard, completedStep.from, completedStep.to);
           });
-          setCurrentEmpty(completedStep?.from ?? null);
 
           const nextQueue = [...slideQueue];
 
@@ -471,7 +471,8 @@ export default function App() {
         setSwapAnimation(null);
         setSlideAnimations(null);
         setAnimationProgress(0);
-        setCurrentEmpty(null);
+        setOptimisticJumpEmpty(pendingJumpEmpty);
+        setPendingJumpEmpty(null);
 
         if (pendingMove !== null) {
           void actuallySendMove(pendingMove);
@@ -481,7 +482,7 @@ export default function App() {
     }
 
     requestAnimationFrame(tick);
-  }, [swapAnimation, slideAnimations, slideQueue, pendingMove]);
+  }, [swapAnimation, slideAnimations, slideQueue, pendingJumpEmpty, pendingMove]);
 
   async function createRoom() {
     setIsLoading(true);
@@ -501,6 +502,7 @@ export default function App() {
       setGameState(data.state);
       setDisplayBoard(data.state.board);
       setOptimisticJumpEmpty(null);
+      setPendingJumpEmpty(null);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (createError) {
@@ -534,6 +536,7 @@ export default function App() {
       setGameState(data.state);
       setDisplayBoard(data.state.board);
       setOptimisticJumpEmpty(null);
+      setPendingJumpEmpty(null);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (joinError) {
@@ -567,6 +570,7 @@ export default function App() {
       setGameState(data.state);
       setDisplayBoard(data.state.board);
       setOptimisticJumpEmpty(null);
+      setPendingJumpEmpty(null);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (watchError) {
@@ -591,9 +595,9 @@ export default function App() {
     const empty = getEmptyIndex(boardForAnimation);
     if (empty === -1) return;
     const isJump = isJumpMove(empty, index);
-    setCurrentEmpty(empty);
     setDisplayBoard(boardForAnimation.map((cell) => ({ ...cell })));
-    setOptimisticJumpEmpty(isJump ? { player: gameState.currentPlayer, index } : null);
+    setOptimisticJumpEmpty(null);
+    setPendingJumpEmpty(isJump ? { player: gameState.currentPlayer, index } : null);
 
     const from = index;
 
@@ -601,7 +605,8 @@ export default function App() {
 
     if (anims.length === 0) {
       void actuallySendMove(index);
-      setCurrentEmpty(null);
+      setOptimisticJumpEmpty(isJump ? { player: gameState.currentPlayer, index } : null);
+      setPendingJumpEmpty(null);
       return;
     }
 
@@ -634,9 +639,11 @@ export default function App() {
       setGameState(data.state);
       setDisplayBoard(data.state.board);
       setOptimisticJumpEmpty(null);
+      setPendingJumpEmpty(null);
       setSeats(data.seats);
     } catch (e) {
       setOptimisticJumpEmpty(null);
+      setPendingJumpEmpty(null);
       setError(e instanceof Error ? e.message : 'Failed to submit move.');
     } finally {
       setIsLoading(false);
@@ -648,7 +655,7 @@ export default function App() {
   const scoreB = state?.score.B ?? 0;
   const scoreW = state?.score.W ?? 0;
   const effectiveBoard = displayBoard ?? state?.board ?? [];
-  const effectiveEmpty = currentEmpty ?? state?.turnStartEmpty ?? null;
+  const effectiveEmpty = effectiveBoard.length > 0 ? getEmptyIndex(effectiveBoard) : null;
   const effectiveJumpEmpty = state
     ? {
         B:
