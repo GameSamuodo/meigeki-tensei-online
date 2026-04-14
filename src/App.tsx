@@ -434,12 +434,12 @@ export default function App() {
             if (!prevBoard || !completedStep) return prevBoard;
             return swapBoardCells(prevBoard, completedStep.from, completedStep.to);
           });
+          setCurrentEmpty(completedStep?.from ?? null);
 
           const nextQueue = [...slideQueue];
 
           if (nextQueue.length > 0) {
             const next = nextQueue.shift()!;
-            setCurrentEmpty(next.from);
             setSlideQueue(nextQueue);
             setSlideAnimations([next]);
             setAnimationProgress(0);
