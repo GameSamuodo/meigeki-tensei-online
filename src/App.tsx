@@ -191,8 +191,9 @@ function Board({
   }
 
   function getAnimationStyle(index: number) {
-    if (swapAnimation) {
-      const { from, to } = swapAnimation;
+    const activeAnimation = swapAnimation ?? currentSlideAnimation;
+    if (activeAnimation) {
+      const { from, to } = activeAnimation;
 
       if (index !== from && index !== to) return {};
 
@@ -242,16 +243,6 @@ function Board({
           const isMovable = movable.includes(boardIndex);
           const isSource = repositionSource === boardIndex;
           const isWinHighlight = winHighlightIndices.has(boardIndex);
-          const isSlideFrom = currentSlideAnimation?.from === boardIndex;
-          const isSlideTo = currentSlideAnimation?.to === boardIndex;
-          const slideDx = currentSlideAnimation
-            ? ((currentSlideAnimation.to % SIZE) - (currentSlideAnimation.from % SIZE)) * cellSize
-            : 0;
-          const slideDy = currentSlideAnimation
-            ? (Math.floor(currentSlideAnimation.to / SIZE) - Math.floor(currentSlideAnimation.from / SIZE)) * cellSize
-            : 0;
-          const cellImageSrc = getCellImageSrc(cell);
-          const hideStaticContent = isSlideTo && cell.type === undefined;
 
           return (
             <button
@@ -284,15 +275,13 @@ function Board({
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                position: 'relative',
-                overflow: 'visible',
 
                 ...getAnimationStyle(boardIndex),
               }}
             >
-              {!hideStaticContent && cellImageSrc ? (
+              {getCellImageSrc(cell) ? (
                 <img
-                  src={cellImageSrc}
+                  src={getCellImageSrc(cell)!}
                   alt={getCellLabel(cell)}
                   style={{
                     width: '100%',
@@ -301,26 +290,9 @@ function Board({
                     pointerEvents: 'none',
                   }}
                 />
-              ) : !hideStaticContent ? (
+              ) : (
                 <div>{getCellLabel(cell)}</div>
-              ) : null}
-              {isSlideFrom && cellImageSrc ? (
-                <img
-                  src={cellImageSrc}
-                  alt=""
-                  aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    inset: padding,
-                    width: `calc(100% - ${padding * 2}px)`,
-                    height: `calc(100% - ${padding * 2}px)`,
-                    objectFit: 'cover',
-                    pointerEvents: 'none',
-                    transform: `translate(${slideDx * animationProgress}px, ${slideDy * animationProgress}px)`,
-                    zIndex: 20,
-                  }}
-                />
-              ) : null}
+              )}
             </button>
           );
         }
