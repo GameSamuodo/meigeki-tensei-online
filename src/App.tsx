@@ -343,6 +343,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSidePanels, setShowSidePanels] = useState(true);
   const [boardScale, setBoardScale] = useState<1 | 0.6>(1);
+  const [moveInFlight, setMoveInFlight] = useState(false);
   const [swapAnimation, setSwapAnimation] = useState<{from: number; to: number;} | null>(null);
   const [animationProgress, setAnimationProgress] = useState(0);
   const [pendingMove, setPendingMove] = useState<number | null>(null);
@@ -352,6 +353,7 @@ export default function App() {
   const [pendingJumpEmpty, setPendingJumpEmpty] = useState<{ player: Player; index: number } | null>(null);
   const animationActiveRef = useRef(false);
   const pendingMoveRef = useRef<number | null>(null);
+  const moveInFlightRef = useRef(false);
   const refreshRequestIdRef = useRef(0);
   const moveRequestIdRef = useRef(0);
   const state = gameState;
@@ -363,6 +365,10 @@ export default function App() {
   useEffect(() => {
     pendingMoveRef.current = pendingMove;
   }, [pendingMove]);
+
+  useEffect(() => {
+    moveInFlightRef.current = moveInFlight;
+  }, [moveInFlight]);
 
   function swapBoardCells(board: Cell[], from: number, to: number) {
     const nextBoard = board.map((cell) => ({ ...cell }));
@@ -399,7 +405,8 @@ export default function App() {
     const shouldApplyBoard =
       requestId === refreshRequestIdRef.current &&
       !animationActiveRef.current &&
-      pendingMoveRef.current === null;
+      pendingMoveRef.current === null &&
+      !moveInFlightRef.current;
 
     if (shouldApplyBoard) {
       setGameState(data.state);
@@ -456,15 +463,20 @@ export default function App() {
     if (!session) return;
 
     void refreshRoom(session);
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+
     const intervalId = window.setInterval(() => {
-      if (swapAnimation || slideAnimations || pendingMove !== null) return;
+      if (animationActiveRef.current || pendingMoveRef.current !== null || moveInFlightRef.current) return;
       void refreshRoom(session).catch((fetchError: unknown) => {
         setError(fetchError instanceof Error ? fetchError.message : 'Failed to sync room.');
       });
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [pendingMove, session, slideAnimations, swapAnimation]);
+  }, [session]);
 
   useEffect(() => {
     const anim = swapAnimation ?? slideAnimations;
@@ -652,6 +664,7 @@ export default function App() {
     if (!session || !gameState) return;
     const requestId = ++moveRequestIdRef.current;
 
+    setMoveInFlight(true);
     setIsLoading(true);
     setError('');
 
@@ -685,6 +698,7 @@ export default function App() {
       setPendingJumpEmpty(null);
       setError(e instanceof Error ? e.message : 'Failed to submit move.');
     } finally {
+      setMoveInFlight(false);
       setIsLoading(false);
     }
   }
