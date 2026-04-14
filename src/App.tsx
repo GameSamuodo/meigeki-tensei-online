@@ -336,6 +336,7 @@ export default function App() {
   const [slideAnimations, setSlideAnimations] = useState<{ from: number; to: number }[] | null>(null);
   const [slideQueue, setSlideQueue] = useState<{from:number;to:number}[]>([]);
   const [currentEmpty, setCurrentEmpty] = useState<number | null>(null);
+  const [optimisticJumpEmpty, setOptimisticJumpEmpty] = useState<{ player: Player; index: number } | null>(null);
   const state = gameState;
 
   function swapBoardCells(board: Cell[], from: number, to: number) {
@@ -372,6 +373,7 @@ export default function App() {
     if (!swapAnimation && !slideAnimations) {
       setGameState(data.state);
       setDisplayBoard(data.state.board);
+      setOptimisticJumpEmpty(null);
     }
     setSeats(data.seats);
   }
@@ -399,6 +401,23 @@ export default function App() {
     }
 
     return result;
+  }
+
+  function isJumpMove(beforeEmpty: number, afterEmpty: number) {
+    const bx = beforeEmpty % SIZE;
+    const by = Math.floor(beforeEmpty / SIZE);
+    const ax = afterEmpty % SIZE;
+    const ay = Math.floor(afterEmpty / SIZE);
+
+    const isOppositeJump =
+      (bx === ax && Math.abs(by - ay) === SIZE - 1) ||
+      (by === ay && Math.abs(bx - ax) === SIZE - 1);
+
+    const isCorner = (x: number, y: number) =>
+      (x === 0 || x === SIZE - 1) &&
+      (y === 0 || y === SIZE - 1);
+
+    return isOppositeJump && !(isCorner(bx, by) && isCorner(ax, ay));
   }
 
   useEffect(() => {
@@ -481,6 +500,7 @@ export default function App() {
       setSession({ roomId: data.roomId, player: data.player });
       setGameState(data.state);
       setDisplayBoard(data.state.board);
+      setOptimisticJumpEmpty(null);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (createError) {
@@ -513,6 +533,7 @@ export default function App() {
       setSession({ roomId: data.roomId, player: data.player });
       setGameState(data.state);
       setDisplayBoard(data.state.board);
+      setOptimisticJumpEmpty(null);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (joinError) {
@@ -545,6 +566,7 @@ export default function App() {
       setSession({ roomId: data.roomId, player: data.player });
       setGameState(data.state);
       setDisplayBoard(data.state.board);
+      setOptimisticJumpEmpty(null);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (watchError) {
@@ -568,8 +590,10 @@ export default function App() {
     const boardForAnimation = displayBoard ?? gameState.board;
     const empty = getEmptyIndex(boardForAnimation);
     if (empty === -1) return;
+    const isJump = isJumpMove(empty, index);
     setCurrentEmpty(empty);
     setDisplayBoard(boardForAnimation.map((cell) => ({ ...cell })));
+    setOptimisticJumpEmpty(isJump ? { player: gameState.currentPlayer, index } : null);
 
     const from = index;
 
@@ -609,8 +633,10 @@ export default function App() {
 
       setGameState(data.state);
       setDisplayBoard(data.state.board);
+      setOptimisticJumpEmpty(null);
       setSeats(data.seats);
     } catch (e) {
+      setOptimisticJumpEmpty(null);
       setError(e instanceof Error ? e.message : 'Failed to submit move.');
     } finally {
       setIsLoading(false);
@@ -623,9 +649,23 @@ export default function App() {
   const scoreW = state?.score.W ?? 0;
   const effectiveBoard = displayBoard ?? state?.board ?? [];
   const effectiveEmpty = currentEmpty ?? state?.turnStartEmpty ?? null;
+  const effectiveJumpEmpty = state
+    ? {
+        B:
+          state.currentPlayer === 'B'
+            ? currentEmpty ??
+              (optimisticJumpEmpty?.player === 'B' ? optimisticJumpEmpty.index : state.jumpEmpty.B)
+            : state.jumpEmpty.B,
+        W:
+          state.currentPlayer === 'W'
+            ? currentEmpty ??
+              (optimisticJumpEmpty?.player === 'W' ? optimisticJumpEmpty.index : state.jumpEmpty.W)
+            : state.jumpEmpty.W,
+      }
+    : { B: null, W: null };
   const blockedIndices = useMemo(
-    () => (state ? getTriangleBlockedIndices(state.jumpEmpty) : []),
-    [state],
+    () => (state ? getTriangleBlockedIndices(effectiveJumpEmpty) : []),
+    [effectiveJumpEmpty, state],
   );
   const isMyTurn =
     !!state &&
@@ -952,8 +992,8 @@ export default function App() {
           movable={movable}
           mode={state.reposition ? 'reposition' : 'slide'}
           repositionSource={state.reposition?.from ?? null}
-          jumpEmptyB={currentEmpty ?? state.jumpEmpty.B}
-          jumpEmptyW={currentEmpty ?? state.jumpEmpty.W}
+          jumpEmptyB={effectiveJumpEmpty.B}
+          jumpEmptyW={effectiveJumpEmpty.W}
           swapAnimation={swapAnimation}
           slideAnimations={slideAnimations}
           animationProgress={animationProgress}
