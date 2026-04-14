@@ -191,9 +191,8 @@ function Board({
   }
 
   function getAnimationStyle(index: number) {
-    const activeAnimation = swapAnimation ?? currentSlideAnimation;
-    if (activeAnimation) {
-      const { from, to } = activeAnimation;
+    if (swapAnimation) {
+      const { from, to } = swapAnimation;
 
       if (index !== from && index !== to) return {};
 
@@ -216,6 +215,37 @@ function Board({
       if (index === to) {
         return {
           transform: `translate(${-dx * animationProgress}px, ${-dy * animationProgress}px)`,
+          position: 'relative' as const,
+          zIndex: 999,
+        };
+      }
+    }
+
+    if (currentSlideAnimation) {
+      const { from, to } = currentSlideAnimation;
+
+      if (index !== from && index !== to) return {};
+
+      const fromX = from % SIZE;
+      const fromY = Math.floor(from / SIZE);
+      const toX = to % SIZE;
+      const toY = Math.floor(to / SIZE);
+
+      const dx = (toX - fromX) * cellSize;
+      const dy = (toY - fromY) * cellSize;
+      const remaining = 1 - animationProgress;
+
+      if (index === to) {
+        return {
+          transform: `translate(${-dx * remaining}px, ${-dy * remaining}px)`,
+          position: 'relative' as const,
+          zIndex: 999,
+        };
+      }
+
+      if (index === from) {
+        return {
+          transform: `translate(${dx * remaining}px, ${dy * remaining}px)`,
           position: 'relative' as const,
           zIndex: 999,
         };
@@ -433,16 +463,14 @@ export default function App() {
         requestAnimationFrame(tick);
       } else {
         if (slideAnimations) {
-          const completedStep = slideAnimations[0];
-          setDisplayBoard((prevBoard) => {
-            if (!prevBoard || !completedStep) return prevBoard;
-            return swapBoardCells(prevBoard, completedStep.from, completedStep.to);
-          });
-
           const nextQueue = [...slideQueue];
 
           if (nextQueue.length > 0) {
             const next = nextQueue.shift()!;
+            setDisplayBoard((prevBoard) => {
+              if (!prevBoard) return prevBoard;
+              return swapBoardCells(prevBoard, next.from, next.to);
+            });
             setSlideQueue(nextQueue);
             setSlideAnimations([next]);
             setAnimationProgress(0);
@@ -593,6 +621,10 @@ export default function App() {
       return;
     }
 
+    setDisplayBoard((prevBoard) => {
+      if (!prevBoard) return prevBoard;
+      return swapBoardCells(prevBoard, anims[0].from, anims[0].to);
+    });
     setSlideAnimations([anims[0]]);
     setSlideQueue(anims.slice(1));
     setPendingMove(index);
