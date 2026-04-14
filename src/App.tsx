@@ -321,6 +321,7 @@ function Board({
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [displayBoard, setDisplayBoard] = useState<Cell[] | null>(null);
   const [roomIdInput, setRoomIdInput] = useState('');
   const [session, setSession] = useState<{ roomId: string; player: SessionPlayer } | null>(null);
   const [seats, setSeats] = useState<{ B: boolean; W: boolean; spectators: number } | null>(null);
@@ -333,7 +334,16 @@ export default function App() {
   const [pendingMove, setPendingMove] = useState<number | null>(null);
   const [slideAnimations, setSlideAnimations] = useState<{ from: number; to: number }[] | null>(null);
   const [slideQueue, setSlideQueue] = useState<{from:number;to:number}[]>([]);
+  const [currentEmpty, setCurrentEmpty] = useState<number | null>(null);
   const state = gameState;
+
+  function swapBoardCells(board: Cell[], from: number, to: number) {
+    const nextBoard = board.map((cell) => ({ ...cell }));
+    const temp = nextBoard[from];
+    nextBoard[from] = nextBoard[to];
+    nextBoard[to] = temp;
+    return nextBoard;
+  }
 
   async function requestJson<T>(input: RequestInfo, init?: RequestInit) {
     const url = typeof input === 'string' && input.startsWith('/api')
@@ -360,6 +370,7 @@ export default function App() {
 
     if (!swapAnimation && !slideAnimations) {
       setGameState(data.state);
+      setDisplayBoard(data.state.board);
     }
     setSeats(data.seats);
   }
@@ -418,10 +429,17 @@ export default function App() {
         requestAnimationFrame(tick);
       } else {
         if (slideAnimations) {
+          const completedStep = slideAnimations[0];
+          setDisplayBoard((prevBoard) => {
+            if (!prevBoard || !completedStep) return prevBoard;
+            return swapBoardCells(prevBoard, completedStep.from, completedStep.to);
+          });
+
           const nextQueue = [...slideQueue];
 
           if (nextQueue.length > 0) {
             const next = nextQueue.shift()!;
+            setCurrentEmpty(next.from);
             setSlideQueue(nextQueue);
             setSlideAnimations([next]);
             setAnimationProgress(0);
@@ -433,6 +451,7 @@ export default function App() {
         setSwapAnimation(null);
         setSlideAnimations(null);
         setAnimationProgress(0);
+        setCurrentEmpty(null);
 
         if (pendingMove !== null) {
           void actuallySendMove(pendingMove);
@@ -460,6 +479,7 @@ export default function App() {
 
       setSession({ roomId: data.roomId, player: data.player });
       setGameState(data.state);
+      setDisplayBoard(data.state.board);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (createError) {
@@ -491,6 +511,7 @@ export default function App() {
 
       setSession({ roomId: data.roomId, player: data.player });
       setGameState(data.state);
+      setDisplayBoard(data.state.board);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (joinError) {
@@ -522,6 +543,7 @@ export default function App() {
 
       setSession({ roomId: data.roomId, player: data.player });
       setGameState(data.state);
+      setDisplayBoard(data.state.board);
       setSeats(data.seats);
       setRoomIdInput(data.roomId);
     } catch (watchError) {
@@ -542,11 +564,19 @@ export default function App() {
       return;
     }
 
-    // slide
     const empty = gameState.turnStartEmpty;
+    setCurrentEmpty(empty);
+    setDisplayBoard(gameState.board.map((cell) => ({ ...cell })));
+
     const from = index;
 
     const anims = buildSlideAnimations(from, empty);
+
+    if (anims.length === 0) {
+      void actuallySendMove(index);
+      setCurrentEmpty(null);
+      return;
+    }
 
     setSlideAnimations([anims[0]]);
     setSlideQueue(anims.slice(1));
@@ -575,6 +605,7 @@ export default function App() {
       });
 
       setGameState(data.state);
+      setDisplayBoard(data.state.board);
       setSeats(data.seats);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to submit move.');
@@ -910,12 +941,12 @@ export default function App() {
         }}
       >
         <Board
-          board={state.board}
+          board={displayBoard ?? state.board}
           movable={movable}
           mode={state.reposition ? 'reposition' : 'slide'}
           repositionSource={state.reposition?.from ?? null}
-          jumpEmptyB={state.jumpEmpty.B}
-          jumpEmptyW={state.jumpEmpty.W}
+          jumpEmptyB={currentEmpty ?? state.jumpEmpty.B}
+          jumpEmptyW={currentEmpty ?? state.jumpEmpty.W}
           swapAnimation={swapAnimation}
           slideAnimations={slideAnimations}
           animationProgress={animationProgress}
