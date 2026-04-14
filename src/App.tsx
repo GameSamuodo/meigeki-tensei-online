@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   getCellLabel,
+  getEmptyIndex,
   type GameState,
   getMovableIndices,
   getRepositionIndices,
@@ -564,9 +565,11 @@ export default function App() {
       return;
     }
 
-    const empty = gameState.turnStartEmpty;
+    const boardForAnimation = displayBoard ?? gameState.board;
+    const empty = getEmptyIndex(boardForAnimation);
+    if (empty === -1) return;
     setCurrentEmpty(empty);
-    setDisplayBoard(gameState.board.map((cell) => ({ ...cell })));
+    setDisplayBoard(boardForAnimation.map((cell) => ({ ...cell })));
 
     const from = index;
 
