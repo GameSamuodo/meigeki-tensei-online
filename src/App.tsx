@@ -383,7 +383,7 @@ export default function App() {
       seats: { B: boolean; W: boolean; spectators: number };
     }>(`/api/rooms/${nextSession.roomId}`);
 
-    if (!swapAnimation && !slideAnimations) {
+    if (!swapAnimation && !slideAnimations && pendingMove === null) {
       setGameState(data.state);
       setDisplayBoard(data.state.board);
       setOptimisticJumpEmpty(null);
@@ -439,14 +439,14 @@ export default function App() {
 
     void refreshRoom(session);
     const intervalId = window.setInterval(() => {
-      if (swapAnimation) return;
+      if (swapAnimation || slideAnimations || pendingMove !== null) return;
       void refreshRoom(session).catch((fetchError: unknown) => {
         setError(fetchError instanceof Error ? fetchError.message : 'Failed to sync room.');
       });
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [session]);
+  }, [pendingMove, session, slideAnimations, swapAnimation]);
 
   useEffect(() => {
     const anim = swapAnimation ?? slideAnimations;
