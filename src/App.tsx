@@ -653,13 +653,11 @@ export default function App() {
     ? {
         B:
           state.currentPlayer === 'B'
-            ? currentEmpty ??
-              (optimisticJumpEmpty?.player === 'B' ? optimisticJumpEmpty.index : state.jumpEmpty.B)
+            ? (optimisticJumpEmpty?.player === 'B' ? optimisticJumpEmpty.index : state.jumpEmpty.B)
             : state.jumpEmpty.B,
         W:
           state.currentPlayer === 'W'
-            ? currentEmpty ??
-              (optimisticJumpEmpty?.player === 'W' ? optimisticJumpEmpty.index : state.jumpEmpty.W)
+            ? (optimisticJumpEmpty?.player === 'W' ? optimisticJumpEmpty.index : state.jumpEmpty.W)
             : state.jumpEmpty.W,
       }
     : { B: null, W: null };
