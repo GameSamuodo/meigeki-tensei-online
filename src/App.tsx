@@ -909,6 +909,8 @@ export default function App() {
     : isMyTurn
     ? 'Highlighted cells are legal slides.'
     : 'Waiting for opponent move.';
+  const descriptionImageSrc =
+    session.player === 'W' ? '/descriptionW.png' : '/descriptionB.png';
 
   return (
     <main
@@ -1076,7 +1078,7 @@ export default function App() {
           }}
         >
           <img
-            src="/description.png"
+            src={descriptionImageSrc}
             alt="Game summary"
             style={{
               width: '100%',
