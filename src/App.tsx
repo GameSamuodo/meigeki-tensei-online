@@ -791,7 +791,11 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#d1d5db',
+          backgroundColor: '#d1d5db',
+          backgroundImage: 'url(/cover.png)',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
           padding: 24,
           boxSizing: 'border-box',
         }}
