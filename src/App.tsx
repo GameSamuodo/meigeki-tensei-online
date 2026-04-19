@@ -795,7 +795,7 @@ export default function App() {
           backgroundImage: 'url(/cover.png)',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
+          backgroundSize: 'auto 100%',
           padding: 24,
           boxSizing: 'border-box',
         }}
