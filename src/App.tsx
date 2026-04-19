@@ -996,6 +996,35 @@ export default function App() {
           Phone
         </button>
       </div>
+      <div
+        style={{
+          position: 'absolute',
+          top: 76,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1,
+          minWidth: 220,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+          padding: '10px 16px',
+          border: '1px solid #94a3b8',
+          borderRadius: 12,
+          background: 'rgba(248, 250, 252, 0.92)',
+          backdropFilter: 'blur(4px)',
+        }}
+      >
+        {winnerLines.length > 0 ? (
+          winnerLines.map((line) => (
+            <div key={line} style={{ fontSize: 20, fontWeight: 700 }}>
+              {line}
+            </div>
+          ))
+        ) : (
+          <div style={{ fontSize: 20, fontWeight: 700 }}>{turnLabel}</div>
+        )}
+      </div>
       {showSidePanels ? (
         <div
           style={{
@@ -1022,19 +1051,6 @@ export default function App() {
           <div>Opponent: {seats?.B && seats?.W ? 'Connected' : 'Waiting'}</div>
           <div>Spectators: {seats?.spectators ?? 0}</div>
         </div>
-          {winnerLines.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
-              {winnerLines.map((line) => (
-                <div key={line} style={{ fontSize: 20, fontWeight: 700 }}>
-                  {line}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 10 }}>
-              {turnLabel}
-            </div>
-          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
             <div>Black bullets left: {bulletsLeftB}</div>
             <div>White bullets left: {bulletsLeftW}</div>
