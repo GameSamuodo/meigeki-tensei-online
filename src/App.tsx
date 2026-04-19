@@ -1011,8 +1011,7 @@ export default function App() {
           padding: '10px 16px',
           border: '1px solid #94a3b8',
           borderRadius: 12,
-          background: 'rgba(248, 250, 252, 0.92)',
-          backdropFilter: 'blur(4px)',
+          background: 'transparent',
         }}
       >
         {winnerLines.length > 0 ? (
