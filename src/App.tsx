@@ -790,13 +790,13 @@ export default function App() {
           minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-end',
+          justifyContent: 'center',
           backgroundColor: '#d1d5db',
           backgroundImage: 'url(/cover.png)',
-          backgroundPosition: '48px center',
+          backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'auto 100%',
-          padding: '24px 48px 24px 24px',
+          padding: 24,
           boxSizing: 'border-box',
         }}
       >
