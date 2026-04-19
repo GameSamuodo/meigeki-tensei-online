@@ -1009,7 +1009,7 @@ export default function App() {
           alignItems: 'center',
           gap: 4,
           padding: '10px 16px',
-          border: '3px solid #ffffff',
+          border: '3px solid #000000',
           borderRadius: 12,
           background: 'transparent',
         }}
