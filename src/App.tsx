@@ -782,6 +782,9 @@ export default function App() {
 
     return new Set<number>();
   }, [effectiveBoard, previewTerminalWinner, state]);
+  const coverAspectRatio = 1596 / 1114;
+  const landingCoverWidth = `min(100vw, calc(100vh * ${coverAspectRatio}))`;
+  const landingCardRightInset = `max(24px, calc((100vw - ${landingCoverWidth}) / 2))`;
 
   if (!session || !state) {
     return (
@@ -796,7 +799,10 @@ export default function App() {
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'auto 100%',
-          padding: 24,
+          paddingTop: 24,
+          paddingBottom: 24,
+          paddingLeft: 24,
+          paddingRight: landingCardRightInset,
           boxSizing: 'border-box',
         }}
       >
