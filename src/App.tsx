@@ -793,7 +793,7 @@ export default function App() {
           justifyContent: 'flex-end',
           backgroundColor: '#d1d5db',
           backgroundImage: 'url(/cover.png)',
-          backgroundPosition: '24px center',
+          backgroundPosition: '48px center',
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'auto 100%',
           padding: '24px 48px 24px 24px',
