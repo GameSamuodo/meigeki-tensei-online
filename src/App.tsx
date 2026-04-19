@@ -888,21 +888,32 @@ export default function App() {
           const name = player === 'B' ? 'Black' : 'White';
 
           if (reason === 'bullets') {
-            return [`${name} loses by bullets`];
+            return [`${name} loses by out ofbullets`];
           }
 
           if (reason === 'misTensei') {
             return [`${name} loses by misTensei`];
           }
 
-          return [`${name} wins by ${reason}`];
+          const displayReason =
+            reason === 'terminal'
+              ? '3'
+              : reason === 'mid-terminal'
+              ? 'mid-3'
+              : reason === 'pilot'
+              ? '2'
+              : reason === 'score'
+              ? '1'
+              : reason;
+
+          return [`${name} wins by ${displayReason}`];
         })
       : previewTerminalWinner === 'B'
-      ? ['Black threatens terminal']
+      ? ['Black core connected to Invader']
       : previewTerminalWinner === 'W'
-      ? ['White threatens terminal']
+      ? ['White core connected to Invader']
       : previewTerminalWinner === 'BW'
-      ? ['Black threatens terminal', 'White threatens terminal']
+      ? ['Black core connected to Invader', 'White core connected to Invader']
       : [];
   const phaseLabel = state.reposition
     ? `${state.reposition.player === 'B' ? 'Black' : 'White'} reposition`
