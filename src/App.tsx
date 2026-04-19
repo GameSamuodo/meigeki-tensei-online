@@ -1070,6 +1070,28 @@ export default function App() {
         <div
           style={{
             position: 'absolute',
+            left: 24,
+            bottom: 24,
+            width: 240,
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          <img
+            src="/name.png"
+            alt="Game name"
+            style={{
+              width: '100%',
+              height: 'auto',
+              objectFit: 'contain',
+            }}
+          />
+        </div>
+      ) : null}
+      {showSidePanels ? (
+        <div
+          style={{
+            position: 'absolute',
             right: 24,
             top: 76,
             width: 240,
